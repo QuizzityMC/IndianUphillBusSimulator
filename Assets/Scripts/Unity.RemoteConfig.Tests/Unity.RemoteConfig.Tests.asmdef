@@ -1,0 +1,5 @@
+{
+  "name": "Unity.RemoteConfig.Tests",
+  "references": [],
+  "allowUnsafeCode": true
+}

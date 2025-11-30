@@ -1,0 +1,12 @@
+{
+"companyName": "Indian Uphill Bus Simulator 3D",
+"productName": "Indian Uphill Bus Simulator 3D",
+"dataUrl": "IndianUphillBusSimulator3D-1_0.data.unityweb",
+"wasmCodeUrl": "IndianUphillBusSimulator3D-1_0.wasm.code.unityweb",
+"wasmFrameworkUrl": "IndianUphillBusSimulator3D-1_0.wasm.framework.unityweb",
+"TOTAL_MEMORY": 268435456,
+"graphicsAPI": ["WebGL 2.0", "WebGL 1.0"],
+"webglContextAttributes": {"preserveDrawingBuffer": false},
+"splashScreenStyle": "Dark",
+"backgroundColor": "#231F20"
+}

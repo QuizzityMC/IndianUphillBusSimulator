@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!300 &1
+RuntimeInitializeOnLoadManager:
+  m_ObjectHideFlags: 0
+  m_AssemblyNames:
+  - Assembly-CSharp
+  - UnityEngine.CoreModule
+  - UnityEditor.Advertisements
+  - Unity.RemoteConfig
+  m_NamespaceNames:
+  - UnityEngine.Analytics
+  - UnityEngine.Experimental.Rendering
+  - UnityEditor.Advertisements
+  - Unity.RemoteConfig
+  m_ClassInfos:
+  - m_AssemblyNameIndex: 0
+    m_NamespaceIndex: 0
+    m_ClassName: DataPrivacy
+    m_NumOfMethods: 1
+    m_MethodIndex: 0
+    m_IsUnityClass: 0
+  - m_AssemblyNameIndex: 1
+    m_NamespaceIndex: 1
+    m_ClassName: ScriptableRuntimeReflectionSystemSettings
+    m_NumOfMethods: 1
+    m_MethodIndex: 1
+    m_IsUnityClass: 0
+  - m_AssemblyNameIndex: 2
+    m_NamespaceIndex: 2
+    m_ClassName: UnityAdsEditor
+    m_NumOfMethods: 1
+    m_MethodIndex: 2
+    m_IsUnityClass: 0
+  - m_AssemblyNameIndex: 3
+    m_NamespaceIndex: 3
+    m_ClassName: ConfigManager
+    m_NumOfMethods: 1
+    m_MethodIndex: 3
+    m_IsUnityClass: 0
+  m_ClassMethodInfos:
+  - m_ClassIndex: 0
+    m_MethodName: Initialize
+    m_OrderNumber: 0
+  - m_ClassIndex: 1
+    m_MethodName: ScriptingDirtyReflectionSystemInstance
+    m_OrderNumber: 0
+  - m_ClassIndex: 2
+    m_MethodName: EditorOnLoad
+    m_OrderNumber: 0
+  - m_ClassIndex: 3
+    m_MethodName: Initialize
+    m_OrderNumber: 0
+  m_BeforeUnityMethodExecutionOrders: 0000000002000000
+  m_AfterUnityMethodExecutionOrders: 0100000003000000
+  m_BeforeMethodExecutionOrders:
+  m_AfterMethodExecutionOrders:
+  m_FullClassNames: []
