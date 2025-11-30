@@ -25,6 +25,17 @@ jobs:
     name: Build WebGL
     runs-on: ubuntu-latest
     steps:
+      - name: Check Unity License Configuration
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
+            echo "::error::Unity license is not configured. Please add UNITY_LICENSE (and optionally UNITY_EMAIL, UNITY_PASSWORD) secrets to your repository."
+            echo "::error::See README.md for setup instructions or visit: https://game.ci/docs/github/activation"
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
