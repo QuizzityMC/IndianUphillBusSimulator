@@ -1,66 +1,136 @@
 using UnityEngine;
+using System;
 
 namespace UnityEngine.Networking
 {
-	public class NetworkBehaviour : MonoBehaviour
-	{
-		/*
-		Dummy class. This could have happened for several reasons:
+    public class NetworkBehaviour : MonoBehaviour
+    {
+        private NetworkIdentity m_NetworkIdentity;
 
-		1. No dll files were provided to AssetRipper.
+        public NetworkIdentity netIdentity
+        {
+            get
+            {
+                if (m_NetworkIdentity == null)
+                {
+                    m_NetworkIdentity = GetComponent<NetworkIdentity>();
+                }
+                return m_NetworkIdentity;
+            }
+        }
 
-			Unity asset bundles and serialized files do not contain script information to decompile.
-				* For Mono games, that information is contained in .NET dll files.
-				* For Il2Cpp games, that information is contained in compiled C++ assemblies and the global metadata.
-				
-			AssetRipper usually expects games to conform to a normal file structure for Unity games of that platform.
-			A unexpected file structure could cause AssetRipper to not find the required files.
+        public bool isServer
+        {
+            get { return netIdentity != null && netIdentity.isServer; }
+        }
 
-		2. Incorrect dll files were provided to AssetRipper.
+        public bool isClient
+        {
+            get { return netIdentity != null && netIdentity.isClient; }
+        }
 
-			Any of the following could cause this:
-				* Il2CppInterop assemblies
-				* Deobfuscated assemblies
-				* Older assemblies (compared to when the bundle was built)
-				* Newer assemblies (compared to when the bundle was built)
+        public bool isLocalPlayer
+        {
+            get { return netIdentity != null && netIdentity.isLocalPlayer; }
+        }
 
-			Note: Although assembly publicizing is bad, it alone cannot cause empty scripts. See: https://github.com/AssetRipper/AssetRipper/issues/653
+        public bool hasAuthority
+        {
+            get { return netIdentity != null && netIdentity.hasAuthority; }
+        }
 
-		3. Assembly Reconstruction has not been implemented.
+        public uint netId
+        {
+            get { return netIdentity != null ? netIdentity.netId : 0; }
+        }
 
-			Asset bundles contain a small amount of information about the script content.
-			This information can be used to recover the serializable fields of a script.
+        public NetworkConnection connectionToServer
+        {
+            get { return netIdentity != null ? netIdentity.connectionToServer : null; }
+        }
 
-			See: https://github.com/AssetRipper/AssetRipper/issues/655
-	
-		4. This script is unnecessary.
+        public NetworkConnection connectionToClient
+        {
+            get { return netIdentity != null ? netIdentity.connectionToClient : null; }
+        }
 
-			If this script has no asset or script references, it can be deleted.
-			Be sure to resolve any compile errors before deleting because they can hide references.
+        public short playerControllerId
+        {
+            get { return netIdentity != null ? netIdentity.playerControllerId : (short)-1; }
+        }
 
-		5. Script Content Level 0
+        protected virtual void OnEnable()
+        {
+            m_NetworkIdentity = GetComponent<NetworkIdentity>();
+        }
 
-			AssetRipper was set to not load any script information.
+        public virtual void OnStartServer() { }
+        public virtual void OnStartClient() { }
+        public virtual void OnStartLocalPlayer() { }
+        public virtual void OnStartAuthority() { }
+        public virtual void OnStopAuthority() { }
+        public virtual void OnNetworkDestroy() { }
 
-		6. Cpp2IL failed to decompile Il2Cpp data
+        public virtual bool OnSerialize(NetworkWriter writer, bool initialState)
+        {
+            return false;
+        }
 
-			If this happened, there will be errors in the AssetRipper.log indicating that it happened.
-			This is an upstream problem, and the AssetRipper developer has very little control over it.
-			Please post a GitHub issue at: https://github.com/SamboyCoding/Cpp2IL/issues
+        public virtual void OnDeserialize(NetworkReader reader, bool initialState) { }
 
-		7. An incorrect path was provided to AssetRipper.
+        public virtual void OnSetLocalVisibility(bool vis) { }
+        public virtual void OnRebuildObservers(HashSet<NetworkConnection> observers, bool initialize) { }
+        public virtual bool OnCheckObserver(NetworkConnection conn) { return true; }
 
-			This is characterized by "Mixed game structure has been found at" in the AssetRipper.log file.
-			AssetRipper expects games to conform to a normal file structure for Unity games of that platform.
-			An unexpected file structure could cause AssetRipper to not find the required files for script decompilation.
-			Generally, AssetRipper expects users to provide the root folder of the game. For example:
-				* Windows: the folder containing the game's .exe file
-				* Mac: the .app file/folder
-				* Linux: the folder containing the game's executable file
-				* Android: the apk file
-				* iOS: the ipa file
-				* Switch: the folder containing exefs and romfs
+        protected void SetDirtyBit(uint dirtyBit)
+        {
+            // Mark sync var as dirty
+        }
 
-		*/
-	}
+        protected void ClearAllDirtyBits()
+        {
+            // Clear all dirty bits
+        }
+
+        public void SetSyncVar<T>(T value, ref T fieldValue, uint dirtyBit)
+        {
+            if (!EqualityComparer<T>.Default.Equals(value, fieldValue))
+            {
+                fieldValue = value;
+                SetDirtyBit(dirtyBit);
+            }
+        }
+    }
+
+    // HashSet placeholder for backwards compatibility
+    public class HashSet<T> : System.Collections.Generic.HashSet<T>
+    {
+        public HashSet() : base() { }
+        public HashSet(System.Collections.Generic.IEnumerable<T> collection) : base(collection) { }
+    }
+
+    // Generic EqualityComparer
+    public class EqualityComparer<T>
+    {
+        private static EqualityComparer<T> _default;
+
+        public static EqualityComparer<T> Default
+        {
+            get
+            {
+                if (_default == null)
+                {
+                    _default = new EqualityComparer<T>();
+                }
+                return _default;
+            }
+        }
+
+        public bool Equals(T x, T y)
+        {
+            if (x == null && y == null) return true;
+            if (x == null || y == null) return false;
+            return x.Equals(y);
+        }
+    }
 }

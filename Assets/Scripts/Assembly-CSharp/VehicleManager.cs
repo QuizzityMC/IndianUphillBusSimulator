@@ -1,63 +1,124 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class VehicleManager : MonoBehaviour
 {
-	/*
-	Dummy class. This could have happened for several reasons:
+    public static VehicleManager Instance { get; private set; }
 
-	1. No dll files were provided to AssetRipper.
+    [Header("Vehicle Prefabs")]
+    [SerializeField]
+    private GameObject[] vehiclePrefabs;
 
-		Unity asset bundles and serialized files do not contain script information to decompile.
-			* For Mono games, that information is contained in .NET dll files.
-			* For Il2Cpp games, that information is contained in compiled C++ assemblies and the global metadata.
-			
-		AssetRipper usually expects games to conform to a normal file structure for Unity games of that platform.
-		A unexpected file structure could cause AssetRipper to not find the required files.
+    [Header("Spawn Points")]
+    [SerializeField]
+    private Transform[] spawnPoints;
 
-	2. Incorrect dll files were provided to AssetRipper.
+    private List<GameObject> activeVehicles = new List<GameObject>();
+    private int currentVehicleIndex = 0;
 
-		Any of the following could cause this:
-			* Il2CppInterop assemblies
-			* Deobfuscated assemblies
-			* Older assemblies (compared to when the bundle was built)
-			* Newer assemblies (compared to when the bundle was built)
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Destroy(gameObject);
+        }
+    }
 
-		Note: Although assembly publicizing is bad, it alone cannot cause empty scripts. See: https://github.com/AssetRipper/AssetRipper/issues/653
+    private void Start()
+    {
+        // Get selected bus from GameManager
+        if (GameManager.Instance != null)
+        {
+            currentVehicleIndex = GameManager.Instance.GetSelectedBus();
+        }
+    }
 
-	3. Assembly Reconstruction has not been implemented.
+    public GameObject SpawnVehicle(int vehicleIndex, Transform spawnPoint)
+    {
+        if (vehiclePrefabs == null || vehicleIndex < 0 || vehicleIndex >= vehiclePrefabs.Length)
+        {
+            Debug.LogWarning("Invalid vehicle index: " + vehicleIndex);
+            return null;
+        }
 
-		Asset bundles contain a small amount of information about the script content.
-		This information can be used to recover the serializable fields of a script.
+        if (vehiclePrefabs[vehicleIndex] == null)
+        {
+            Debug.LogWarning("Vehicle prefab at index " + vehicleIndex + " is null");
+            return null;
+        }
 
-		See: https://github.com/AssetRipper/AssetRipper/issues/655
+        Vector3 position = spawnPoint != null ? spawnPoint.position : Vector3.zero;
+        Quaternion rotation = spawnPoint != null ? spawnPoint.rotation : Quaternion.identity;
 
-	4. This script is unnecessary.
+        GameObject vehicle = Instantiate(vehiclePrefabs[vehicleIndex], position, rotation);
+        activeVehicles.Add(vehicle);
 
-		If this script has no asset or script references, it can be deleted.
-		Be sure to resolve any compile errors before deleting because they can hide references.
+        return vehicle;
+    }
 
-	5. Script Content Level 0
+    public GameObject SpawnPlayerVehicle()
+    {
+        Transform spawnPoint = GetRandomSpawnPoint();
+        return SpawnVehicle(currentVehicleIndex, spawnPoint);
+    }
 
-		AssetRipper was set to not load any script information.
+    public Transform GetRandomSpawnPoint()
+    {
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            return null;
+        }
 
-	6. Cpp2IL failed to decompile Il2Cpp data
+        return spawnPoints[Random.Range(0, spawnPoints.Length)];
+    }
 
-		If this happened, there will be errors in the AssetRipper.log indicating that it happened.
-		This is an upstream problem, and the AssetRipper developer has very little control over it.
-		Please post a GitHub issue at: https://github.com/SamboyCoding/Cpp2IL/issues
+    public void DespawnVehicle(GameObject vehicle)
+    {
+        if (vehicle != null)
+        {
+            activeVehicles.Remove(vehicle);
+            Destroy(vehicle);
+        }
+    }
 
-	7. An incorrect path was provided to AssetRipper.
+    public void DespawnAllVehicles()
+    {
+        foreach (var vehicle in activeVehicles)
+        {
+            if (vehicle != null)
+            {
+                Destroy(vehicle);
+            }
+        }
+        activeVehicles.Clear();
+    }
 
-		This is characterized by "Mixed game structure has been found at" in the AssetRipper.log file.
-		AssetRipper expects games to conform to a normal file structure for Unity games of that platform.
-		An unexpected file structure could cause AssetRipper to not find the required files for script decompilation.
-		Generally, AssetRipper expects users to provide the root folder of the game. For example:
-			* Windows: the folder containing the game's .exe file
-			* Mac: the .app file/folder
-			* Linux: the folder containing the game's executable file
-			* Android: the apk file
-			* iOS: the ipa file
-			* Switch: the folder containing exefs and romfs
+    public int GetActiveVehicleCount()
+    {
+        return activeVehicles.Count;
+    }
 
-	*/
+    public List<GameObject> GetActiveVehicles()
+    {
+        return new List<GameObject>(activeVehicles);
+    }
+
+    public void SetCurrentVehicleIndex(int index)
+    {
+        currentVehicleIndex = Mathf.Clamp(index, 0, vehiclePrefabs != null ? vehiclePrefabs.Length - 1 : 0);
+    }
+
+    public int GetCurrentVehicleIndex()
+    {
+        return currentVehicleIndex;
+    }
+
+    public int GetTotalVehicleCount()
+    {
+        return vehiclePrefabs != null ? vehiclePrefabs.Length : 0;
+    }
 }

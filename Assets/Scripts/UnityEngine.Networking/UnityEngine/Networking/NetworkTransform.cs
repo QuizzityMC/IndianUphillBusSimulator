@@ -2,65 +2,217 @@ using UnityEngine;
 
 namespace UnityEngine.Networking
 {
-	public class NetworkTransform : MonoBehaviour
-	{
-		/*
-		Dummy class. This could have happened for several reasons:
+    public class NetworkTransform : NetworkBehaviour
+    {
+        public enum TransformSyncMode
+        {
+            SyncNone = 0,
+            SyncTransform = 1,
+            SyncRigidbody2D = 2,
+            SyncRigidbody3D = 3,
+            SyncCharacterController = 4
+        }
 
-		1. No dll files were provided to AssetRipper.
+        public enum AxisSyncMode
+        {
+            None = 0,
+            AxisX = 1,
+            AxisY = 2,
+            AxisZ = 4,
+            AxisXY = AxisX | AxisY,
+            AxisXZ = AxisX | AxisZ,
+            AxisYZ = AxisY | AxisZ,
+            AxisXYZ = AxisX | AxisY | AxisZ
+        }
 
-			Unity asset bundles and serialized files do not contain script information to decompile.
-				* For Mono games, that information is contained in .NET dll files.
-				* For Il2Cpp games, that information is contained in compiled C++ assemblies and the global metadata.
-				
-			AssetRipper usually expects games to conform to a normal file structure for Unity games of that platform.
-			A unexpected file structure could cause AssetRipper to not find the required files.
+        public enum CompressionSyncMode
+        {
+            None,
+            Low,
+            High
+        }
 
-		2. Incorrect dll files were provided to AssetRipper.
+        [SerializeField]
+        private TransformSyncMode m_TransformSyncMode = TransformSyncMode.SyncTransform;
 
-			Any of the following could cause this:
-				* Il2CppInterop assemblies
-				* Deobfuscated assemblies
-				* Older assemblies (compared to when the bundle was built)
-				* Newer assemblies (compared to when the bundle was built)
+        [SerializeField]
+        private float m_SendInterval = 0.1f;
 
-			Note: Although assembly publicizing is bad, it alone cannot cause empty scripts. See: https://github.com/AssetRipper/AssetRipper/issues/653
+        [SerializeField]
+        private AxisSyncMode m_SyncRotationAxis = AxisSyncMode.AxisXYZ;
 
-		3. Assembly Reconstruction has not been implemented.
+        [SerializeField]
+        private CompressionSyncMode m_RotationSyncCompression = CompressionSyncMode.None;
 
-			Asset bundles contain a small amount of information about the script content.
-			This information can be used to recover the serializable fields of a script.
+        [SerializeField]
+        private bool m_SyncSpin = false;
 
-			See: https://github.com/AssetRipper/AssetRipper/issues/655
-	
-		4. This script is unnecessary.
+        [SerializeField]
+        private float m_MovementThreshold = 0.001f;
 
-			If this script has no asset or script references, it can be deleted.
-			Be sure to resolve any compile errors before deleting because they can hide references.
+        [SerializeField]
+        private float m_VelocityThreshold = 0.0001f;
 
-		5. Script Content Level 0
+        [SerializeField]
+        private float m_SnapThreshold = 5f;
 
-			AssetRipper was set to not load any script information.
+        [SerializeField]
+        private float m_InterpolateRotation = 1f;
 
-		6. Cpp2IL failed to decompile Il2Cpp data
+        [SerializeField]
+        private float m_InterpolateMovement = 1f;
 
-			If this happened, there will be errors in the AssetRipper.log indicating that it happened.
-			This is an upstream problem, and the AssetRipper developer has very little control over it.
-			Please post a GitHub issue at: https://github.com/SamboyCoding/Cpp2IL/issues
+        private Vector3 m_TargetPosition;
+        private Quaternion m_TargetRotation;
+        private Vector3 m_TargetVelocity;
 
-		7. An incorrect path was provided to AssetRipper.
+        private Rigidbody m_Rigidbody3D;
+        private Rigidbody2D m_Rigidbody2D;
+        private CharacterController m_CharacterController;
 
-			This is characterized by "Mixed game structure has been found at" in the AssetRipper.log file.
-			AssetRipper expects games to conform to a normal file structure for Unity games of that platform.
-			An unexpected file structure could cause AssetRipper to not find the required files for script decompilation.
-			Generally, AssetRipper expects users to provide the root folder of the game. For example:
-				* Windows: the folder containing the game's .exe file
-				* Mac: the .app file/folder
-				* Linux: the folder containing the game's executable file
-				* Android: the apk file
-				* iOS: the ipa file
-				* Switch: the folder containing exefs and romfs
+        private Vector3 m_LastPosition;
+        private Quaternion m_LastRotation;
+        private float m_LastSendTime;
 
-		*/
-	}
+        public TransformSyncMode transformSyncMode { get { return m_TransformSyncMode; } set { m_TransformSyncMode = value; } }
+        public float sendInterval { get { return m_SendInterval; } set { m_SendInterval = value; } }
+        public AxisSyncMode syncRotationAxis { get { return m_SyncRotationAxis; } set { m_SyncRotationAxis = value; } }
+        public CompressionSyncMode rotationSyncCompression { get { return m_RotationSyncCompression; } set { m_RotationSyncCompression = value; } }
+        public bool syncSpin { get { return m_SyncSpin; } set { m_SyncSpin = value; } }
+        public float movementThreshold { get { return m_MovementThreshold; } set { m_MovementThreshold = value; } }
+        public float velocityThreshold { get { return m_VelocityThreshold; } set { m_VelocityThreshold = value; } }
+        public float snapThreshold { get { return m_SnapThreshold; } set { m_SnapThreshold = value; } }
+        public float interpolateRotation { get { return m_InterpolateRotation; } set { m_InterpolateRotation = value; } }
+        public float interpolateMovement { get { return m_InterpolateMovement; } set { m_InterpolateMovement = value; } }
+
+        public Vector3 targetPosition { get { return m_TargetPosition; } }
+        public Vector3 targetVelocity { get { return m_TargetVelocity; } }
+        public Quaternion targetRotation { get { return m_TargetRotation; } }
+
+        private void Awake()
+        {
+            m_Rigidbody3D = GetComponent<Rigidbody>();
+            m_Rigidbody2D = GetComponent<Rigidbody2D>();
+            m_CharacterController = GetComponent<CharacterController>();
+
+            m_TargetPosition = transform.position;
+            m_TargetRotation = transform.rotation;
+            m_LastPosition = transform.position;
+            m_LastRotation = transform.rotation;
+        }
+
+        public override void OnStartServer()
+        {
+            m_LastPosition = transform.position;
+            m_LastRotation = transform.rotation;
+        }
+
+        public override void OnStartClient()
+        {
+            m_TargetPosition = transform.position;
+            m_TargetRotation = transform.rotation;
+        }
+
+        private void FixedUpdate()
+        {
+            if (isServer)
+            {
+                UpdateServer();
+            }
+        }
+
+        private void Update()
+        {
+            if (!isServer && isClient)
+            {
+                UpdateClient();
+            }
+        }
+
+        private void UpdateServer()
+        {
+            if (Time.time - m_LastSendTime < m_SendInterval)
+            {
+                return;
+            }
+
+            Vector3 currentPosition = transform.position;
+            Quaternion currentRotation = transform.rotation;
+
+            bool positionChanged = Vector3.Distance(currentPosition, m_LastPosition) > m_MovementThreshold;
+            bool rotationChanged = Quaternion.Angle(currentRotation, m_LastRotation) > m_MovementThreshold;
+
+            if (positionChanged || rotationChanged)
+            {
+                m_LastPosition = currentPosition;
+                m_LastRotation = currentRotation;
+                m_LastSendTime = Time.time;
+                
+                // Sync to clients would happen here in a real implementation
+                SetDirtyBit(1);
+            }
+        }
+
+        private void UpdateClient()
+        {
+            if (!hasAuthority)
+            {
+                // Interpolate to target position
+                if (m_InterpolateMovement > 0f)
+                {
+                    transform.position = Vector3.Lerp(transform.position, m_TargetPosition, m_InterpolateMovement * Time.deltaTime * 10f);
+                }
+                else
+                {
+                    transform.position = m_TargetPosition;
+                }
+
+                // Interpolate rotation
+                if (m_InterpolateRotation > 0f)
+                {
+                    transform.rotation = Quaternion.Slerp(transform.rotation, m_TargetRotation, m_InterpolateRotation * Time.deltaTime * 10f);
+                }
+                else
+                {
+                    transform.rotation = m_TargetRotation;
+                }
+            }
+        }
+
+        public override bool OnSerialize(NetworkWriter writer, bool initialState)
+        {
+            // Serialize position and rotation
+            return true;
+        }
+
+        public override void OnDeserialize(NetworkReader reader, bool initialState)
+        {
+            // Deserialize position and rotation
+        }
+
+        public void Teleport(Vector3 position)
+        {
+            if (hasAuthority)
+            {
+                transform.position = position;
+                m_TargetPosition = position;
+                m_LastPosition = position;
+            }
+        }
+
+        public void SetTargetPosition(Vector3 position)
+        {
+            m_TargetPosition = position;
+        }
+
+        public void SetTargetRotation(Quaternion rotation)
+        {
+            m_TargetRotation = rotation;
+        }
+
+        public void SetTargetVelocity(Vector3 velocity)
+        {
+            m_TargetVelocity = velocity;
+        }
+    }
 }

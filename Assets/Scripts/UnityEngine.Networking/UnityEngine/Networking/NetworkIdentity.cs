@@ -1,66 +1,165 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace UnityEngine.Networking
 {
-	public class NetworkIdentity : MonoBehaviour
-	{
-		/*
-		Dummy class. This could have happened for several reasons:
+    public class NetworkIdentity : MonoBehaviour
+    {
+        [SerializeField]
+        private uint m_SceneId;
 
-		1. No dll files were provided to AssetRipper.
+        [SerializeField]
+        private bool m_ServerOnly;
 
-			Unity asset bundles and serialized files do not contain script information to decompile.
-				* For Mono games, that information is contained in .NET dll files.
-				* For Il2Cpp games, that information is contained in compiled C++ assemblies and the global metadata.
-				
-			AssetRipper usually expects games to conform to a normal file structure for Unity games of that platform.
-			A unexpected file structure could cause AssetRipper to not find the required files.
+        [SerializeField]
+        private bool m_LocalPlayerAuthority;
 
-		2. Incorrect dll files were provided to AssetRipper.
+        private uint m_NetId;
+        private bool m_IsServer;
+        private bool m_IsClient;
+        private bool m_IsLocalPlayer;
+        private bool m_HasAuthority;
+        private short m_PlayerControllerId = -1;
 
-			Any of the following could cause this:
-				* Il2CppInterop assemblies
-				* Deobfuscated assemblies
-				* Older assemblies (compared to when the bundle was built)
-				* Newer assemblies (compared to when the bundle was built)
+        private NetworkConnection m_ConnectionToServer;
+        private NetworkConnection m_ConnectionToClient;
 
-			Note: Although assembly publicizing is bad, it alone cannot cause empty scripts. See: https://github.com/AssetRipper/AssetRipper/issues/653
+        private List<NetworkBehaviour> m_NetworkBehaviours;
 
-		3. Assembly Reconstruction has not been implemented.
+        public uint netId { get { return m_NetId; } }
+        public uint sceneId { get { return m_SceneId; } }
+        public bool serverOnly { get { return m_ServerOnly; } set { m_ServerOnly = value; } }
+        public bool localPlayerAuthority { get { return m_LocalPlayerAuthority; } set { m_LocalPlayerAuthority = value; } }
+        public bool isServer { get { return m_IsServer; } }
+        public bool isClient { get { return m_IsClient; } }
+        public bool isLocalPlayer { get { return m_IsLocalPlayer; } }
+        public bool hasAuthority { get { return m_HasAuthority; } }
 
-			Asset bundles contain a small amount of information about the script content.
-			This information can be used to recover the serializable fields of a script.
+        public NetworkConnection connectionToServer { get { return m_ConnectionToServer; } }
+        public NetworkConnection connectionToClient { get { return m_ConnectionToClient; } }
+        public short playerControllerId { get { return m_PlayerControllerId; } }
 
-			See: https://github.com/AssetRipper/AssetRipper/issues/655
-	
-		4. This script is unnecessary.
+        public static uint GetNextNetworkId()
+        {
+            return s_NextNetworkId++;
+        }
 
-			If this script has no asset or script references, it can be deleted.
-			Be sure to resolve any compile errors before deleting because they can hide references.
+        private static uint s_NextNetworkId = 1;
 
-		5. Script Content Level 0
+        private void Awake()
+        {
+            m_NetworkBehaviours = new List<NetworkBehaviour>(GetComponentsInChildren<NetworkBehaviour>());
+        }
 
-			AssetRipper was set to not load any script information.
+        internal void SetNetworkId(uint newNetId)
+        {
+            m_NetId = newNetId;
+        }
 
-		6. Cpp2IL failed to decompile Il2Cpp data
+        internal void SetIsServer(bool value)
+        {
+            m_IsServer = value;
+        }
 
-			If this happened, there will be errors in the AssetRipper.log indicating that it happened.
-			This is an upstream problem, and the AssetRipper developer has very little control over it.
-			Please post a GitHub issue at: https://github.com/SamboyCoding/Cpp2IL/issues
+        internal void SetIsClient(bool value)
+        {
+            m_IsClient = value;
+        }
 
-		7. An incorrect path was provided to AssetRipper.
+        internal void SetLocalPlayer(short controllerId)
+        {
+            m_IsLocalPlayer = true;
+            m_PlayerControllerId = controllerId;
+            m_HasAuthority = true;
+        }
 
-			This is characterized by "Mixed game structure has been found at" in the AssetRipper.log file.
-			AssetRipper expects games to conform to a normal file structure for Unity games of that platform.
-			An unexpected file structure could cause AssetRipper to not find the required files for script decompilation.
-			Generally, AssetRipper expects users to provide the root folder of the game. For example:
-				* Windows: the folder containing the game's .exe file
-				* Mac: the .app file/folder
-				* Linux: the folder containing the game's executable file
-				* Android: the apk file
-				* iOS: the ipa file
-				* Switch: the folder containing exefs and romfs
+        internal void SetConnectionToServer(NetworkConnection conn)
+        {
+            m_ConnectionToServer = conn;
+        }
 
-		*/
-	}
+        internal void SetConnectionToClient(NetworkConnection conn)
+        {
+            m_ConnectionToClient = conn;
+        }
+
+        internal void SetAuthority(bool authority)
+        {
+            m_HasAuthority = authority;
+        }
+
+        public void OnStartServer()
+        {
+            m_IsServer = true;
+            if (m_NetId == 0)
+            {
+                m_NetId = GetNextNetworkId();
+            }
+
+            foreach (var behaviour in m_NetworkBehaviours)
+            {
+                behaviour.OnStartServer();
+            }
+        }
+
+        public void OnStartClient()
+        {
+            m_IsClient = true;
+
+            foreach (var behaviour in m_NetworkBehaviours)
+            {
+                behaviour.OnStartClient();
+            }
+        }
+
+        public void OnStartLocalPlayer()
+        {
+            foreach (var behaviour in m_NetworkBehaviours)
+            {
+                behaviour.OnStartLocalPlayer();
+            }
+        }
+
+        public void OnStartAuthority()
+        {
+            m_HasAuthority = true;
+            foreach (var behaviour in m_NetworkBehaviours)
+            {
+                behaviour.OnStartAuthority();
+            }
+        }
+
+        public void OnStopAuthority()
+        {
+            m_HasAuthority = false;
+            foreach (var behaviour in m_NetworkBehaviours)
+            {
+                behaviour.OnStopAuthority();
+            }
+        }
+
+        public void OnNetworkDestroy()
+        {
+            foreach (var behaviour in m_NetworkBehaviours)
+            {
+                behaviour.OnNetworkDestroy();
+            }
+        }
+
+        public void RebuildObservers(bool initialize)
+        {
+            // Rebuild observers
+        }
+
+        public void AssignClientAuthority(NetworkConnection conn)
+        {
+            m_ConnectionToClient = conn;
+            m_HasAuthority = false;
+        }
+
+        public void RemoveClientAuthority(NetworkConnection conn)
+        {
+            m_ConnectionToClient = null;
+        }
+    }
 }
