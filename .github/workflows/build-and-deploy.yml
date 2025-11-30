@@ -33,6 +33,9 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
+          echo "Checking Unity license configuration..."
+          
+          # Check if any license method is configured
           if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
             echo "::error::Unity license is not configured."
             echo "::error::Option 1: Add UNITY_LICENSE secret (for personal/professional license file)"
@@ -40,12 +43,29 @@ jobs:
             echo "::error::See README.md for setup instructions or visit: https://game.ci/docs/github/activation"
             exit 1
           fi
+          
+          # Check serial-based activation requirements
           if [ -n "$UNITY_SERIAL" ]; then
             if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ]; then
               echo "::error::When using UNITY_SERIAL, UNITY_EMAIL and UNITY_PASSWORD are also required."
               exit 1
             fi
+            echo "Serial-based activation configured."
           fi
+          
+          # Validate UNITY_LICENSE format if provided
+          if [ -n "$UNITY_LICENSE" ]; then
+            # Check if it looks like a valid ULF file (should contain XML declaration or root element)
+            if echo "$UNITY_LICENSE" | grep -qE "(<\?xml|<root>)"; then
+              echo "UNITY_LICENSE appears to be in valid ULF format."
+            else
+              echo "::warning::UNITY_LICENSE may not be in valid ULF format."
+              echo "::warning::For Unity 2021+, you need a manually activated license file."
+              echo "::warning::Follow the game-ci activation guide: https://game.ci/docs/github/activation"
+            fi
+          fi
+          
+          echo "License configuration check passed."
 
       - name: Checkout repository
         uses: actions/checkout@v4
