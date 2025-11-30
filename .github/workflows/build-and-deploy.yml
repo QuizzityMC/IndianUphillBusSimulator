@@ -55,10 +55,8 @@ jobs:
           
           # Validate UNITY_LICENSE format if provided
           if [ -n "$UNITY_LICENSE" ]; then
-            # Check if it looks like a valid ULF file (should contain XML-like content)
-            if echo "$UNITY_LICENSE" | grep -q "<?xml"; then
-              echo "UNITY_LICENSE appears to be in valid ULF format."
-            elif echo "$UNITY_LICENSE" | grep -q "<root>"; then
+            # Check if it looks like a valid ULF file (should contain XML declaration or root element)
+            if echo "$UNITY_LICENSE" | grep -qE "(<\?xml|<root>)"; then
               echo "UNITY_LICENSE appears to be in valid ULF format."
             else
               echo "::warning::UNITY_LICENSE may not be in valid ULF format."
