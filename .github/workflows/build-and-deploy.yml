@@ -24,7 +24,29 @@ jobs:
   build:
     name: Build WebGL
     runs-on: ubuntu-latest
+    environment: github-pages
     steps:
+      - name: Check Unity License Configuration
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
+            echo "::error::Unity license is not configured."
+            echo "::error::Option 1: Add UNITY_LICENSE secret (for personal/professional license file)"
+            echo "::error::Option 2: Add UNITY_SERIAL, UNITY_EMAIL, and UNITY_PASSWORD secrets (for serial-based activation)"
+            echo "::error::See README.md for setup instructions or visit: https://game.ci/docs/github/activation"
+            exit 1
+          fi
+          if [ -n "$UNITY_SERIAL" ]; then
+            if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ]; then
+              echo "::error::When using UNITY_SERIAL, UNITY_EMAIL and UNITY_PASSWORD are also required."
+              exit 1
+            fi
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -43,11 +65,11 @@ jobs:
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL
-          unityVersion: 2018.4.13f1
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
