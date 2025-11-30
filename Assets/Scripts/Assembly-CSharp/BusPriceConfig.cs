@@ -2,11 +2,16 @@ using UnityEngine;
 
 /// <summary>
 /// ScriptableObject to configure bus prices.
-/// All prices are set so that the most expensive bus costs 25,000.
+/// All prices are set so that the most expensive bus costs MAX_BUS_PRICE (25,000).
 /// </summary>
 [CreateAssetMenu(fileName = "BusPriceConfig", menuName = "Indian Uphill Bus/Bus Price Configuration")]
 public class BusPriceConfig : ScriptableObject
 {
+    /// <summary>
+    /// Maximum bus price constant - the most expensive bus costs this amount.
+    /// </summary>
+    public const int MAX_BUS_PRICE = 25000;
+
     [System.Serializable]
     public class BusInfo
     {
@@ -17,7 +22,7 @@ public class BusPriceConfig : ScriptableObject
         public bool isUnlockedByDefault;
     }
 
-    [Header("Bus Configurations - Most expensive bus costs 25,000")]
+    [Header("Bus Configurations - Most expensive bus costs " + "25,000")]
     [SerializeField]
     private BusInfo[] buses = new BusInfo[]
     {
@@ -27,7 +32,7 @@ public class BusPriceConfig : ScriptableObject
         new BusInfo { busName = "Luxury Bus", price = 15000, description = "Luxury bus with premium features.", isUnlockedByDefault = false },
         new BusInfo { busName = "Double Decker", price = 18000, description = "Classic double decker with extra capacity.", isUnlockedByDefault = false },
         new BusInfo { busName = "Mountain Express", price = 22000, description = "Built for mountain terrain with powerful engine.", isUnlockedByDefault = false },
-        new BusInfo { busName = "Super Deluxe", price = 25000, description = "The ultimate bus with top-tier performance.", isUnlockedByDefault = false }
+        new BusInfo { busName = "Super Deluxe", price = MAX_BUS_PRICE, description = "The ultimate bus with top-tier performance.", isUnlockedByDefault = false }
     };
 
     public int GetBusCount()
@@ -78,15 +83,15 @@ public class BusPriceConfig : ScriptableObject
         return maxPrice;
     }
 
-    // Validation method to ensure most expensive bus is 25,000
+    // Validation method to ensure most expensive bus matches MAX_BUS_PRICE
     private void OnValidate()
     {
         if (buses != null)
         {
             int maxPrice = GetMostExpensiveBusPrice();
-            if (maxPrice != 25000)
+            if (maxPrice != MAX_BUS_PRICE)
             {
-                Debug.LogWarning("BusPriceConfig: Most expensive bus should cost 25,000. Current max: " + maxPrice);
+                Debug.LogWarning("BusPriceConfig: Most expensive bus should cost " + MAX_BUS_PRICE + ". Current max: " + maxPrice);
             }
         }
     }

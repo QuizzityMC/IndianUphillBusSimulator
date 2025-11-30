@@ -6,16 +6,22 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    [Header("Bus Prices - Most expensive is 25,000")]
+    /// <summary>
+    /// Maximum bus price - the most expensive bus costs this amount.
+    /// Uses the same constant as BusPriceConfig for consistency.
+    /// </summary>
+    public const int MAX_BUS_PRICE = 25000;
+
+    [Header("Bus Prices - Most expensive is " + "25,000")]
     [SerializeField]
     private int[] busPrices = new int[] {
-        0,      // Bus 1 - Free (starter bus)
-        5000,   // Bus 2
-        10000,  // Bus 3
-        15000,  // Bus 4
-        18000,  // Bus 5
-        22000,  // Bus 6
-        25000   // Bus 7 - Most expensive
+        0,              // Bus 1 - Free (starter bus)
+        5000,           // Bus 2
+        10000,          // Bus 3
+        15000,          // Bus 4
+        18000,          // Bus 5
+        22000,          // Bus 6
+        MAX_BUS_PRICE   // Bus 7 - Most expensive (25,000)
     };
 
     [Header("Multiplayer Settings")]

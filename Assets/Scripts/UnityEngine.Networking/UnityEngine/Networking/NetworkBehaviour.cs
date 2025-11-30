@@ -94,7 +94,7 @@ namespace UnityEngine.Networking
 
         public void SetSyncVar<T>(T value, ref T fieldValue, uint dirtyBit)
         {
-            if (!EqualityComparer<T>.Default.Equals(value, fieldValue))
+            if (!System.Collections.Generic.EqualityComparer<T>.Default.Equals(value, fieldValue))
             {
                 fieldValue = value;
                 SetDirtyBit(dirtyBit);
@@ -107,30 +107,5 @@ namespace UnityEngine.Networking
     {
         public HashSet() : base() { }
         public HashSet(System.Collections.Generic.IEnumerable<T> collection) : base(collection) { }
-    }
-
-    // Generic EqualityComparer
-    public class EqualityComparer<T>
-    {
-        private static EqualityComparer<T> _default;
-
-        public static EqualityComparer<T> Default
-        {
-            get
-            {
-                if (_default == null)
-                {
-                    _default = new EqualityComparer<T>();
-                }
-                return _default;
-            }
-        }
-
-        public bool Equals(T x, T y)
-        {
-            if (x == null && y == null) return true;
-            if (x == null || y == null) return false;
-            return x.Equals(y);
-        }
     }
 }

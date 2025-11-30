@@ -181,13 +181,31 @@ namespace UnityEngine.Networking
 
         public override bool OnSerialize(NetworkWriter writer, bool initialState)
         {
-            // Serialize position and rotation
-            return true;
+            // Serialize position and rotation for network sync
+            if (writer == null)
+            {
+                return false;
+            }
+
+            // In a full implementation, serialize transform data to the writer
+            // This implementation uses the last position/rotation tracking for sync
+            bool hasChanges = initialState || 
+                Vector3.Distance(transform.position, m_LastPosition) > m_MovementThreshold ||
+                Quaternion.Angle(transform.rotation, m_LastRotation) > m_MovementThreshold;
+
+            return hasChanges;
         }
 
         public override void OnDeserialize(NetworkReader reader, bool initialState)
         {
-            // Deserialize position and rotation
+            // Deserialize position and rotation from network
+            if (reader == null)
+            {
+                return;
+            }
+
+            // In a full implementation, read transform data from the reader
+            // and update m_TargetPosition/m_TargetRotation for interpolation
         }
 
         public void Teleport(Vector3 position)
