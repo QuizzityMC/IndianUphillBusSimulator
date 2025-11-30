@@ -1,63 +1,214 @@
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class HomeManager : MonoBehaviour
 {
-	/*
-	Dummy class. This could have happened for several reasons:
+    [Header("UI References")]
+    [SerializeField]
+    private Text moneyText;
 
-	1. No dll files were provided to AssetRipper.
+    [SerializeField]
+    private Text busNameText;
 
-		Unity asset bundles and serialized files do not contain script information to decompile.
-			* For Mono games, that information is contained in .NET dll files.
-			* For Il2Cpp games, that information is contained in compiled C++ assemblies and the global metadata.
-			
-		AssetRipper usually expects games to conform to a normal file structure for Unity games of that platform.
-		A unexpected file structure could cause AssetRipper to not find the required files.
+    [SerializeField]
+    private Text busPriceText;
 
-	2. Incorrect dll files were provided to AssetRipper.
+    [SerializeField]
+    private Button buyButton;
 
-		Any of the following could cause this:
-			* Il2CppInterop assemblies
-			* Deobfuscated assemblies
-			* Older assemblies (compared to when the bundle was built)
-			* Newer assemblies (compared to when the bundle was built)
+    [SerializeField]
+    private Button selectButton;
 
-		Note: Although assembly publicizing is bad, it alone cannot cause empty scripts. See: https://github.com/AssetRipper/AssetRipper/issues/653
+    [SerializeField]
+    private Button playButton;
 
-	3. Assembly Reconstruction has not been implemented.
+    [SerializeField]
+    private Button nextBusButton;
 
-		Asset bundles contain a small amount of information about the script content.
-		This information can be used to recover the serializable fields of a script.
+    [SerializeField]
+    private Button prevBusButton;
 
-		See: https://github.com/AssetRipper/AssetRipper/issues/655
+    [SerializeField]
+    private Button multiplayerButton;
 
-	4. This script is unnecessary.
+    [Header("Bus Display")]
+    [SerializeField]
+    private GameObject[] busModels;
 
-		If this script has no asset or script references, it can be deleted.
-		Be sure to resolve any compile errors before deleting because they can hide references.
+    [SerializeField]
+    private string[] busNames = new string[] {
+        "Standard Bus",
+        "City Bus",
+        "Tourist Bus",
+        "Luxury Bus",
+        "Double Decker",
+        "Mountain Express",
+        "Super Deluxe"
+    };
 
-	5. Script Content Level 0
+    private int currentBusIndex = 0;
 
-		AssetRipper was set to not load any script information.
+    private void Start()
+    {
+        currentBusIndex = GameManager.Instance != null ? GameManager.Instance.GetSelectedBus() : 0;
+        UpdateUI();
+        SetupButtons();
+    }
 
-	6. Cpp2IL failed to decompile Il2Cpp data
+    private void SetupButtons()
+    {
+        if (buyButton != null)
+        {
+            buyButton.onClick.AddListener(OnBuyButtonClicked);
+        }
 
-		If this happened, there will be errors in the AssetRipper.log indicating that it happened.
-		This is an upstream problem, and the AssetRipper developer has very little control over it.
-		Please post a GitHub issue at: https://github.com/SamboyCoding/Cpp2IL/issues
+        if (selectButton != null)
+        {
+            selectButton.onClick.AddListener(OnSelectButtonClicked);
+        }
 
-	7. An incorrect path was provided to AssetRipper.
+        if (playButton != null)
+        {
+            playButton.onClick.AddListener(OnPlayButtonClicked);
+        }
 
-		This is characterized by "Mixed game structure has been found at" in the AssetRipper.log file.
-		AssetRipper expects games to conform to a normal file structure for Unity games of that platform.
-		An unexpected file structure could cause AssetRipper to not find the required files for script decompilation.
-		Generally, AssetRipper expects users to provide the root folder of the game. For example:
-			* Windows: the folder containing the game's .exe file
-			* Mac: the .app file/folder
-			* Linux: the folder containing the game's executable file
-			* Android: the apk file
-			* iOS: the ipa file
-			* Switch: the folder containing exefs and romfs
+        if (nextBusButton != null)
+        {
+            nextBusButton.onClick.AddListener(OnNextBusClicked);
+        }
 
-	*/
+        if (prevBusButton != null)
+        {
+            prevBusButton.onClick.AddListener(OnPrevBusClicked);
+        }
+
+        if (multiplayerButton != null)
+        {
+            multiplayerButton.onClick.AddListener(OnMultiplayerButtonClicked);
+        }
+    }
+
+    private void UpdateUI()
+    {
+        if (GameManager.Instance == null)
+        {
+            return;
+        }
+
+        // Update money display
+        if (moneyText != null)
+        {
+            moneyText.text = GameManager.Instance.GetPlayerMoney().ToString("N0");
+        }
+
+        // Update bus name
+        if (busNameText != null && currentBusIndex < busNames.Length)
+        {
+            busNameText.text = busNames[currentBusIndex];
+        }
+
+        // Update bus price display
+        bool isUnlocked = GameManager.Instance.IsBusUnlocked(currentBusIndex);
+        int price = GameManager.Instance.GetBusPrice(currentBusIndex);
+
+        if (busPriceText != null)
+        {
+            busPriceText.text = isUnlocked ? "OWNED" : price.ToString("N0");
+        }
+
+        // Update button visibility
+        if (buyButton != null)
+        {
+            buyButton.gameObject.SetActive(!isUnlocked);
+            buyButton.interactable = GameManager.Instance.GetPlayerMoney() >= price;
+        }
+
+        if (selectButton != null)
+        {
+            selectButton.gameObject.SetActive(isUnlocked);
+            bool isSelected = GameManager.Instance.GetSelectedBus() == currentBusIndex;
+            selectButton.interactable = !isSelected;
+        }
+
+        // Update bus models
+        UpdateBusDisplay();
+    }
+
+    private void UpdateBusDisplay()
+    {
+        if (busModels == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < busModels.Length; i++)
+        {
+            if (busModels[i] != null)
+            {
+                busModels[i].SetActive(i == currentBusIndex);
+            }
+        }
+    }
+
+    public void OnNextBusClicked()
+    {
+        int totalBuses = GameManager.Instance != null ? GameManager.Instance.GetTotalBusCount() : busNames.Length;
+        currentBusIndex = (currentBusIndex + 1) % totalBuses;
+        UpdateUI();
+    }
+
+    public void OnPrevBusClicked()
+    {
+        int totalBuses = GameManager.Instance != null ? GameManager.Instance.GetTotalBusCount() : busNames.Length;
+        currentBusIndex = (currentBusIndex - 1 + totalBuses) % totalBuses;
+        UpdateUI();
+    }
+
+    public void OnBuyButtonClicked()
+    {
+        if (GameManager.Instance != null)
+        {
+            if (GameManager.Instance.TryUnlockBus(currentBusIndex))
+            {
+                UpdateUI();
+            }
+        }
+    }
+
+    public void OnSelectButtonClicked()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.SetSelectedBus(currentBusIndex);
+            UpdateUI();
+        }
+    }
+
+    public void OnPlayButtonClicked()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.IsMultiplayerEnabled())
+        {
+            SceneManager.LoadScene("MultiplayerLobby");
+        }
+        else
+        {
+            SceneManager.LoadScene("Play(RCC)");
+        }
+    }
+
+    public void OnMultiplayerButtonClicked()
+    {
+        SceneManager.LoadScene("MultiplayerLobby");
+    }
+
+    public void OnSettingsButtonClicked()
+    {
+        // Settings functionality
+    }
+
+    public void OnExitButtonClicked()
+    {
+        Application.Quit();
+    }
 }

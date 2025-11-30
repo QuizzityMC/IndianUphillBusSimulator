@@ -1,66 +1,267 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 namespace UnityEngine.Networking
 {
-	public class NetworkManager : MonoBehaviour
-	{
-		/*
-		Dummy class. This could have happened for several reasons:
+    public class NetworkManager : MonoBehaviour
+    {
+        public static NetworkManager singleton { get; private set; }
 
-		1. No dll files were provided to AssetRipper.
+        [Header("Network Settings")]
+        [SerializeField]
+        private string networkAddress = "localhost";
 
-			Unity asset bundles and serialized files do not contain script information to decompile.
-				* For Mono games, that information is contained in .NET dll files.
-				* For Il2Cpp games, that information is contained in compiled C++ assemblies and the global metadata.
-				
-			AssetRipper usually expects games to conform to a normal file structure for Unity games of that platform.
-			A unexpected file structure could cause AssetRipper to not find the required files.
+        [SerializeField]
+        private int networkPort = 7777;
 
-		2. Incorrect dll files were provided to AssetRipper.
+        [SerializeField]
+        private int maxConnections = 8;
 
-			Any of the following could cause this:
-				* Il2CppInterop assemblies
-				* Deobfuscated assemblies
-				* Older assemblies (compared to when the bundle was built)
-				* Newer assemblies (compared to when the bundle was built)
+        [SerializeField]
+        private string onlineScene = "Play(RCC)";
 
-			Note: Although assembly publicizing is bad, it alone cannot cause empty scripts. See: https://github.com/AssetRipper/AssetRipper/issues/653
+        [SerializeField]
+        private string offlineScene = "HomeStart";
 
-		3. Assembly Reconstruction has not been implemented.
+        [SerializeField]
+        private GameObject playerPrefab;
 
-			Asset bundles contain a small amount of information about the script content.
-			This information can be used to recover the serializable fields of a script.
+        [SerializeField]
+        private List<GameObject> spawnablePrefabs = new List<GameObject>();
 
-			See: https://github.com/AssetRipper/AssetRipper/issues/655
-	
-		4. This script is unnecessary.
+        [Header("State")]
+        private bool isServer;
+        private bool isClient;
+        private bool isHost;
 
-			If this script has no asset or script references, it can be deleted.
-			Be sure to resolve any compile errors before deleting because they can hide references.
+        public string NetworkAddress
+        {
+            get { return networkAddress; }
+            set { networkAddress = value; }
+        }
 
-		5. Script Content Level 0
+        public int NetworkPort
+        {
+            get { return networkPort; }
+            set { networkPort = value; }
+        }
 
-			AssetRipper was set to not load any script information.
+        public int MaxConnections
+        {
+            get { return maxConnections; }
+            set { maxConnections = value; }
+        }
 
-		6. Cpp2IL failed to decompile Il2Cpp data
+        public string OnlineScene
+        {
+            get { return onlineScene; }
+            set { onlineScene = value; }
+        }
 
-			If this happened, there will be errors in the AssetRipper.log indicating that it happened.
-			This is an upstream problem, and the AssetRipper developer has very little control over it.
-			Please post a GitHub issue at: https://github.com/SamboyCoding/Cpp2IL/issues
+        public string OfflineScene
+        {
+            get { return offlineScene; }
+            set { offlineScene = value; }
+        }
 
-		7. An incorrect path was provided to AssetRipper.
+        public bool IsServer { get { return isServer; } }
+        public bool IsClient { get { return isClient; } }
+        public bool IsHost { get { return isHost; } }
 
-			This is characterized by "Mixed game structure has been found at" in the AssetRipper.log file.
-			AssetRipper expects games to conform to a normal file structure for Unity games of that platform.
-			An unexpected file structure could cause AssetRipper to not find the required files for script decompilation.
-			Generally, AssetRipper expects users to provide the root folder of the game. For example:
-				* Windows: the folder containing the game's .exe file
-				* Mac: the .app file/folder
-				* Linux: the folder containing the game's executable file
-				* Android: the apk file
-				* iOS: the ipa file
-				* Switch: the folder containing exefs and romfs
+        protected virtual void Awake()
+        {
+            if (singleton != null && singleton != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
 
-		*/
-	}
+            singleton = this;
+            DontDestroyOnLoad(gameObject);
+        }
+
+        protected virtual void OnDestroy()
+        {
+            if (singleton == this)
+            {
+                singleton = null;
+            }
+        }
+
+        public virtual void StartServer()
+        {
+            isServer = true;
+            isClient = false;
+            isHost = false;
+            OnStartServer();
+        }
+
+        public virtual void StartClient()
+        {
+            isServer = false;
+            isClient = true;
+            isHost = false;
+            OnStartClient();
+        }
+
+        public virtual void StartHost()
+        {
+            isServer = true;
+            isClient = true;
+            isHost = true;
+            OnStartHost();
+        }
+
+        public virtual void StopServer()
+        {
+            isServer = false;
+            OnStopServer();
+        }
+
+        public virtual void StopClient()
+        {
+            isClient = false;
+            OnStopClient();
+        }
+
+        public virtual void StopHost()
+        {
+            StopServer();
+            StopClient();
+            isHost = false;
+            OnStopHost();
+        }
+
+        protected virtual void OnStartServer()
+        {
+            Debug.Log("Server started on port " + networkPort);
+            if (!string.IsNullOrEmpty(onlineScene))
+            {
+                SceneManager.LoadScene(onlineScene);
+            }
+        }
+
+        protected virtual void OnStartClient()
+        {
+            Debug.Log("Client connecting to " + networkAddress + ":" + networkPort);
+        }
+
+        protected virtual void OnStartHost()
+        {
+            Debug.Log("Host started on port " + networkPort);
+            OnStartServer();
+        }
+
+        protected virtual void OnStopServer()
+        {
+            Debug.Log("Server stopped");
+            if (!string.IsNullOrEmpty(offlineScene))
+            {
+                SceneManager.LoadScene(offlineScene);
+            }
+        }
+
+        protected virtual void OnStopClient()
+        {
+            Debug.Log("Client disconnected");
+            if (!string.IsNullOrEmpty(offlineScene) && !isServer)
+            {
+                SceneManager.LoadScene(offlineScene);
+            }
+        }
+
+        protected virtual void OnStopHost()
+        {
+            Debug.Log("Host stopped");
+        }
+
+        public virtual void OnServerAddPlayer(NetworkConnection conn, short playerControllerId)
+        {
+            if (playerPrefab != null)
+            {
+                GameObject player = Instantiate(playerPrefab);
+                Debug.Log("Player added: " + playerControllerId);
+            }
+        }
+
+        public virtual void OnServerRemovePlayer(NetworkConnection conn, PlayerController player)
+        {
+            Debug.Log("Player removed");
+        }
+
+        public virtual void OnServerConnect(NetworkConnection conn)
+        {
+            Debug.Log("Client connected: " + conn.connectionId);
+        }
+
+        public virtual void OnServerDisconnect(NetworkConnection conn)
+        {
+            Debug.Log("Client disconnected: " + conn.connectionId);
+        }
+
+        public virtual void OnClientConnect(NetworkConnection conn)
+        {
+            Debug.Log("Connected to server");
+        }
+
+        public virtual void OnClientDisconnect(NetworkConnection conn)
+        {
+            Debug.Log("Disconnected from server");
+        }
+
+        public virtual void OnClientError(NetworkConnection conn, int errorCode)
+        {
+            Debug.LogError("Client error: " + errorCode);
+        }
+
+        public void ServerChangeScene(string newSceneName)
+        {
+            if (isServer)
+            {
+                SceneManager.LoadScene(newSceneName);
+            }
+        }
+    }
+
+    // Placeholder for NetworkConnection
+    public class NetworkConnection
+    {
+        public int connectionId;
+        public string address;
+
+        public virtual bool Send(short msgType, MessageBase msg)
+        {
+            return true;
+        }
+    }
+
+    // Placeholder for PlayerController
+    public class PlayerController
+    {
+        public short playerControllerId;
+        public GameObject gameObject;
+        public bool IsValid { get { return gameObject != null; } }
+    }
+
+    // Placeholder for MessageBase
+    public abstract class MessageBase
+    {
+        public virtual void Deserialize(NetworkReader reader) { }
+        public virtual void Serialize(NetworkWriter writer) { }
+    }
+
+    // Placeholder for NetworkReader
+    public class NetworkReader
+    {
+        public byte[] buffer;
+        public int Position { get; private set; }
+    }
+
+    // Placeholder for NetworkWriter
+    public class NetworkWriter
+    {
+        public byte[] buffer = new byte[1024];
+        public int Position { get; private set; }
+    }
 }

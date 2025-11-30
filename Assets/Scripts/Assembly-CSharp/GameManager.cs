@@ -1,63 +1,164 @@
 using UnityEngine;
+using UnityEngine.Networking;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
-	/*
-	Dummy class. This could have happened for several reasons:
+    public static GameManager Instance { get; private set; }
 
-	1. No dll files were provided to AssetRipper.
+    /// <summary>
+    /// Maximum bus price - the most expensive bus costs this amount.
+    /// Uses the same constant as BusPriceConfig for consistency.
+    /// </summary>
+    public const int MAX_BUS_PRICE = 25000;
 
-		Unity asset bundles and serialized files do not contain script information to decompile.
-			* For Mono games, that information is contained in .NET dll files.
-			* For Il2Cpp games, that information is contained in compiled C++ assemblies and the global metadata.
-			
-		AssetRipper usually expects games to conform to a normal file structure for Unity games of that platform.
-		A unexpected file structure could cause AssetRipper to not find the required files.
+    [Header("Bus Prices - Most expensive is " + "25,000")]
+    [SerializeField]
+    private int[] busPrices = new int[] {
+        0,              // Bus 1 - Free (starter bus)
+        5000,           // Bus 2
+        10000,          // Bus 3
+        15000,          // Bus 4
+        18000,          // Bus 5
+        22000,          // Bus 6
+        MAX_BUS_PRICE   // Bus 7 - Most expensive (25,000)
+    };
 
-	2. Incorrect dll files were provided to AssetRipper.
+    [Header("Multiplayer Settings")]
+    [SerializeField]
+    private bool isMultiplayerEnabled = true;
 
-		Any of the following could cause this:
-			* Il2CppInterop assemblies
-			* Deobfuscated assemblies
-			* Older assemblies (compared to when the bundle was built)
-			* Newer assemblies (compared to when the bundle was built)
+    [Header("Game State")]
+    [SerializeField]
+    private int playerMoney = 5000;
 
-		Note: Although assembly publicizing is bad, it alone cannot cause empty scripts. See: https://github.com/AssetRipper/AssetRipper/issues/653
+    [SerializeField]
+    private int selectedBusIndex = 0;
 
-	3. Assembly Reconstruction has not been implemented.
+    [SerializeField]
+    private bool[] unlockedBuses = new bool[] { true, false, false, false, false, false, false };
 
-		Asset bundles contain a small amount of information about the script content.
-		This information can be used to recover the serializable fields of a script.
+    private const string PLAYER_MONEY_KEY = "PlayerMoney";
+    private const string SELECTED_BUS_KEY = "SelectedBus";
+    private const string UNLOCKED_BUSES_KEY = "UnlockedBuses_";
 
-		See: https://github.com/AssetRipper/AssetRipper/issues/655
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            LoadGameData();
+        }
+        else if (Instance != this)
+        {
+            Destroy(gameObject);
+        }
+    }
 
-	4. This script is unnecessary.
+    public int GetBusPrice(int busIndex)
+    {
+        if (busIndex >= 0 && busIndex < busPrices.Length)
+        {
+            return busPrices[busIndex];
+        }
+        return 0;
+    }
 
-		If this script has no asset or script references, it can be deleted.
-		Be sure to resolve any compile errors before deleting because they can hide references.
+    public bool IsBusUnlocked(int busIndex)
+    {
+        if (busIndex >= 0 && busIndex < unlockedBuses.Length)
+        {
+            return unlockedBuses[busIndex];
+        }
+        return false;
+    }
 
-	5. Script Content Level 0
+    public bool TryUnlockBus(int busIndex)
+    {
+        if (busIndex < 0 || busIndex >= busPrices.Length)
+        {
+            return false;
+        }
 
-		AssetRipper was set to not load any script information.
+        if (unlockedBuses[busIndex])
+        {
+            return true; // Already unlocked
+        }
 
-	6. Cpp2IL failed to decompile Il2Cpp data
+        int price = busPrices[busIndex];
+        if (playerMoney >= price)
+        {
+            playerMoney -= price;
+            unlockedBuses[busIndex] = true;
+            SaveGameData();
+            return true;
+        }
 
-		If this happened, there will be errors in the AssetRipper.log indicating that it happened.
-		This is an upstream problem, and the AssetRipper developer has very little control over it.
-		Please post a GitHub issue at: https://github.com/SamboyCoding/Cpp2IL/issues
+        return false;
+    }
 
-	7. An incorrect path was provided to AssetRipper.
+    public int GetPlayerMoney()
+    {
+        return playerMoney;
+    }
 
-		This is characterized by "Mixed game structure has been found at" in the AssetRipper.log file.
-		AssetRipper expects games to conform to a normal file structure for Unity games of that platform.
-		An unexpected file structure could cause AssetRipper to not find the required files for script decompilation.
-		Generally, AssetRipper expects users to provide the root folder of the game. For example:
-			* Windows: the folder containing the game's .exe file
-			* Mac: the .app file/folder
-			* Linux: the folder containing the game's executable file
-			* Android: the apk file
-			* iOS: the ipa file
-			* Switch: the folder containing exefs and romfs
+    public void AddMoney(int amount)
+    {
+        playerMoney += amount;
+        SaveGameData();
+    }
 
-	*/
+    public void SetSelectedBus(int busIndex)
+    {
+        if (busIndex >= 0 && busIndex < unlockedBuses.Length && unlockedBuses[busIndex])
+        {
+            selectedBusIndex = busIndex;
+            SaveGameData();
+        }
+    }
+
+    public int GetSelectedBus()
+    {
+        return selectedBusIndex;
+    }
+
+    public bool IsMultiplayerEnabled()
+    {
+        return isMultiplayerEnabled;
+    }
+
+    public void SetMultiplayerEnabled(bool enabled)
+    {
+        isMultiplayerEnabled = enabled;
+    }
+
+    private void LoadGameData()
+    {
+        playerMoney = PlayerPrefs.GetInt(PLAYER_MONEY_KEY, 5000);
+        selectedBusIndex = PlayerPrefs.GetInt(SELECTED_BUS_KEY, 0);
+
+        for (int i = 0; i < unlockedBuses.Length; i++)
+        {
+            unlockedBuses[i] = PlayerPrefs.GetInt(UNLOCKED_BUSES_KEY + i, i == 0 ? 1 : 0) == 1;
+        }
+    }
+
+    private void SaveGameData()
+    {
+        PlayerPrefs.SetInt(PLAYER_MONEY_KEY, playerMoney);
+        PlayerPrefs.SetInt(SELECTED_BUS_KEY, selectedBusIndex);
+
+        for (int i = 0; i < unlockedBuses.Length; i++)
+        {
+            PlayerPrefs.SetInt(UNLOCKED_BUSES_KEY + i, unlockedBuses[i] ? 1 : 0);
+        }
+
+        PlayerPrefs.Save();
+    }
+
+    public int GetTotalBusCount()
+    {
+        return busPrices.Length;
+    }
 }
